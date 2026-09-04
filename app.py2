@@ -1,0 +1,618 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+
+# ---------------------------------------------------------
+# 1. การตั้งค่าหน้าเว็บ และการแต่งสไตล์ CSS
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="PickOrPass - Compare Specs Like a Pro",
+    layout="wide"
+)
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap');
+
+html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"],
+button, input, textarea, select, h1, h2, h3, h4, h5, h6, p, label {
+    font-family: 'Kanit', sans-serif !important;
+}
+
+/* 1. เพิ่มระยะเว้นขอบเนื้อหาหลัก ไม่ให้ชิดขอบจอ */
+[data-testid="stMainBlockContainer"] {
+    max-width: 100% !important;
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    padding-top: 0rem !important;
+    padding-bottom: 3rem !important;
+}
+
+/* 2. ซ่อนเฉพาะพื้นหลัง Header แต่เก็บปุ่มเปิด Sidebar ไว้ */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+}
+
+/* 3. ปุ่มเปิด/ปิด Sidebar แบบสี่เหลี่ยมมุมมน */
+[data-testid="stSidebarCollapseButton"] {
+    position: fixed !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 999999 !important;
+}
+[data-testid="stSidebarCollapseButton"] button {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    background: #166534 !important;
+    color: #FFFFFF !important;
+    border: 1px solid #14532D !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 10px rgba(22, 101, 52, 0.22) !important;
+    transition: all 0.2s ease-in-out;
+}
+[data-testid="stSidebarCollapseButton"] button:hover {
+    background: #16A34A !important;
+    transform: translateY(-1px) scale(1.04);
+    box-shadow: 0 6px 14px rgba(22, 101, 52, 0.28) !important;
+}
+
+/* 4. Soft neutral background */
+body, .stApp {
+    background: radial-gradient(circle at 50% 0%, #f0f5f7 0%, #e6ecf0 100%);
+    min-height: 100vh;
+    color: #000000;
+}
+
+/* 5. Clean Header Banner สีเขียวขยายเต็มความกว้าง */
+.hero-section, .hero-banner {
+    background: linear-gradient(135deg, #1b6357 0%, #1a4b78 50%, #112845 100%);
+    position: relative;
+    overflow: hidden;
+    width: calc(100% + 6rem);
+    margin-left: -3rem;
+    margin-right: -3rem;
+    padding: 40px 50px 30px 50px;
+    margin-top: 0px;
+    margin-bottom: 30px;
+    box-sizing: border-box;
+}
+
+/* Clean Cards with Green Hover */
+.card, .verdict-card {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    border-radius: 20px !important;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.verdict-card:hover {
+    transform: translateY(-6px);
+    border-color: #16A34A !important;
+    box-shadow: 0 10px 30px rgba(22, 163, 74, 0.16);
+}
+
+/* Custom Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.badge-value { background-color: #FFD700; color: #000000; }
+.badge-camera { background-color: #00E5FF; color: #000000; }
+.badge-battery { background-color: #00FF66; color: #000000; }
+
+.stButton>button {
+    border-radius: 12px;
+    background-color: #16A34A !important;
+    color: #FFFFFF !important;
+    font-weight: bold;
+    border: none;
+}
+
+/* Sidebar action button */
+[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    height: 42px;
+    min-height: 42px;
+    padding: 0 12px !important;
+    background: #FFFFFF !important;
+    color: #166534 !important;
+    border: 1px solid #86EFAC !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 6px rgba(22, 101, 52, 0.08) !important;
+    transition: all 0.2s ease-in-out;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: #DCFCE7 !important;
+    color: #14532D !important;
+    border-color: #16A34A !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(22, 101, 52, 0.14) !important;
+}
+
+/* Professional technical details menu */
+[data-testid="stExpander"] {
+    background: #FFFFFF !important;
+    border: 1px solid #BBF7D0 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 14px rgba(22, 101, 52, 0.08) !important;
+    overflow: hidden !important;
+}
+[data-testid="stExpander"] summary {
+    background: #F0FDF4 !important;
+    color: #14532D !important;
+    font-weight: 600 !important;
+    padding: 14px 18px !important;
+}
+[data-testid="stExpander"] summary:hover {
+    background: #DCFCE7 !important;
+}
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] {
+    color: #000000 !important;
+    padding: 4px 8px !important;
+}
+
+/* Strong section headings */
+[data-testid="stHeading"] h3,
+[data-testid="stMarkdownContainer"] > h3 {
+    color: #FFFFFF !important;
+    font-size: 1.55rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0 !important;
+    line-height: 1.3 !important;
+    background: linear-gradient(135deg, #16A34A, #15803D);
+    border-radius: 10px;
+    border-left: 5px solid #14532D;
+    padding: 12px 16px;
+    margin-top: 1.5rem !important;
+    margin-bottom: 1rem !important;
+}
+[data-testid="stHeading"] h3::after,
+[data-testid="stMarkdownContainer"] > h3::after {
+    content: "";
+    display: block;
+    width: 42px;
+    height: 3px;
+    background: #BBF7D0;
+    border-radius: 3px;
+    margin-top: 7px;
+}
+[data-testid="stExpander"] summary {
+    font-size: 1.1rem !important;
+    letter-spacing: 0 !important;
+}
+
+/* Custom Sidebar Background & Text Color */
+[data-testid="stSidebar"] {
+    background-color: #E6F4EA !important;
+    border-right: 1px solid #D1FAE5 !important;
+}
+
+[data-testid="stSidebar"] *, 
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] span {
+    color: #000000 !important;
+}
+.sidebar-filter-title {
+    color: #FFFFFF !important;
+    white-space: nowrap !important;
+    font-size: 14px !important;
+}
+
+[data-testid="stRadio"] label,
+[data-testid="stRadio"] label p {
+    color: #000000 !important;
+}
+
+/* 6. ปรับสี Slider สีเขียว */
+div[data-baseweb="slider"] div[role="checkbox"] {
+    background-color: #16A34A !important;
+    border-color: #16A34A !important;
+}
+div[data-baseweb="slider"] div[style*="background-color"] {
+    background-color: #16A34A !important;
+}
+
+/* 7. ปรับสีและทรงแท็ก Multiselect ให้สวยงาม */
+span[data-baseweb="tag"] {
+    background-color: #DCFCE7 !important;
+    border: 1px solid #86EFAC !important;
+    border-radius: 8px !important;
+    padding: 2px 8px !important;
+}
+
+span[data-baseweb="tag"] span {
+    color: #166534 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+
+span[data-baseweb="tag"] svg path {
+    fill: #166534 !important;
+}
+
+div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    border-radius: 10px !important;
+    border: 1px solid #D1FAE5 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+div[data-baseweb="popover"] div {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+}
+
+.vs-mode-warning {
+    color: #000000 !important;
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-weight: 600;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 2. Load Data
+# ---------------------------------------------------------
+@st.cache_data
+def load_data():
+    return pd.read_csv("data.csv")
+
+df = load_data()
+
+# ---------------------------------------------------------
+# 3. Hero Banner
+# ---------------------------------------------------------
+st.markdown("""
+<div class="hero-banner">
+    <h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin: 0 0 8px 0;">
+        PickOrPass
+    </h1>
+    <p style="color: #FFFFFF; font-size: 18px; font-weight: 600; margin: 0 0 6px 0;">
+        The Ultimate Smartphone Showdown
+    </p>
+    <p style="color: #FFFFFF; font-size: 14px; margin: 0;">
+        Compare specs side-by-side, filter by lifestyle, and pick your next dream device.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 4. Sidebar: Smart Filters
+# ---------------------------------------------------------
+st.sidebar.markdown(
+    """
+    <div style="background-color: #16A34A; padding: 12px 16px; margin-bottom: 18px; border-radius: 6px;">
+        <h2 style="color: #FFFFFF; margin: 0; font-size: 22px;">Pick0rPass</h2>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+st.sidebar.header("Smart Filters & VS Mode")
+
+if st.sidebar.button("Last Updated", key="btn_refresh"):
+    st.cache_data.clear()
+    st.rerun()
+
+st.sidebar.markdown("---")
+
+min_p, max_p = int(df["Price_THB"].min()), int(df["Price_THB"].max())
+with st.sidebar.container(border=True):
+    st.markdown(
+        """
+        <div style="background: linear-gradient(135deg, #16A34A, #15803D); padding: 9px 12px; margin-bottom: 10px; border-radius: 8px;">
+            <div class="sidebar-filter-title" style="color: #FFFFFF; font-size: 16px; font-weight: 800;">Budget Range (THB)</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    selected_price = st.slider(
+        "Budget Range (THB):",
+        min_value=min_p,
+        max_value=max_p,
+        value=(min_p, max_p),
+        step=1000,
+        format="฿%d",
+        label_visibility="collapsed"
+    )
+
+all_brands = list(df["Brand"].unique())
+brand_options = ["All (รวมมือถือทุกรุ่น)"] + all_brands
+
+# ใส่ Container แบบมีกรอบให้ Filter Brands
+with st.sidebar.container(border=True):
+    st.markdown(
+        """
+        <div style="background: linear-gradient(135deg, #16A34A, #15803D); padding: 9px 12px; margin-bottom: 10px; border-radius: 8px;">
+            <div class="sidebar-filter-title" style="color: #FFFFFF; font-size: 16px; font-weight: 800;">Filter Brands</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    selected_brand_options = st.multiselect(
+        "Filter Brands:",
+        options=brand_options,
+        default=[brand_options[0]],
+        label_visibility="collapsed"
+    )
+    selected_brands = all_brands if brand_options[0] in selected_brand_options else selected_brand_options
+
+df_filtered_by_sidebar = df[
+    (df["Price_THB"] >= selected_price[0]) & 
+    (df["Price_THB"] <= selected_price[1]) & 
+    (df["Brand"].isin(selected_brands))
+]
+
+available_phones = df_filtered_by_sidebar["Phone_Name"].unique()
+
+# ใส่ Container แบบมีกรอบให้ VS Mode
+with st.sidebar.container(border=True):
+    st.markdown(
+        """
+        <div style="background: linear-gradient(135deg, #16A34A, #15803D); padding: 9px 12px; margin-bottom: 10px; border-radius: 8px;">
+            <div class="sidebar-filter-title" style="color: #FFFFFF; font-size: 16px; font-weight: 800;">Choose Devices</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    selected_phones = st.multiselect(
+        "Choose devices to compare (VS Mode):",
+        options=available_phones,
+        default=list(available_phones[:2]) if len(available_phones) >= 2 else list(available_phones),
+        label_visibility="collapsed"
+    )
+
+brand_colors = {
+    "Apple": "#A2AAAD",
+    "Samsung": "#1428A0",
+    "Xiaomi": "#FF6900",
+    "Google": "#4285F4",
+    "vivo": "#0052FF",
+    "OPPO": "#008060",
+    "HONOR": "#00B2E3",
+    "ASUS": "#FF0033",
+    "Nothing": "#FFFFFF",
+    "POCO": "#FFD700"
+}
+
+# ---------------------------------------------------------
+# 5. Main Content Logic
+# ---------------------------------------------------------
+if len(selected_phones) < 2:
+    st.markdown(
+        '<div class="vs-mode-warning">Please select at least 2 devices from the sidebar to activate VS Mode.</div>',
+        unsafe_allow_html=True
+    )
+else:
+    filtered_df = df_filtered_by_sidebar[df_filtered_by_sidebar["Phone_Name"].isin(selected_phones)]
+
+    # VS Visual Showcase
+    st.subheader("VS Visual Showcase")
+    cols = st.columns(len(filtered_df))
+
+    for idx, (_, phone) in enumerate(filtered_df.iterrows()):
+        with cols[idx]:
+            img_url = phone.get('Image_URL', 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=400')
+            
+            st.markdown(f"""
+            <div class="verdict-card">
+                <img src="{img_url}" style="width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; margin-bottom: 10px;">
+                <h3 style="color: #000000; font-size: 16px; margin: 0 0 4px 0;">{phone['Phone_Name']}</h3>
+                <p style="color: #000000; font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">฿{phone['Price_THB']:,}</p>
+                <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                    <span style="background: rgba(22,163,74,0.15); color: #000000; padding: 4px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                        ⭐ {phone['Score']}/10
+                    </span>
+                    <span style="background: rgba(0,229,255,0.15); color: #000000; padding: 4px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                        {phone['Battery_mAh']:,} mAh
+                    </span>
+                    <span style="background: rgba(0,255,102,0.15); color: #000000; padding: 4px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                        {phone['Camera_MP']} MP
+                    </span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Verdict Box
+    st.subheader("Smart Verdict & Highlights")
+    
+    best_value = filtered_df.loc[(filtered_df['Score'] / filtered_df['Price_THB']).idxmax()]
+    best_camera = filtered_df.loc[filtered_df['Camera_MP'].idxmax()]
+    best_battery = filtered_df.loc[filtered_df['Battery_mAh'].idxmax()]
+
+    v_col1, v_col2, v_col3 = st.columns(3)
+
+    with v_col1:
+        st.markdown(f"""
+        <div class="verdict-card">
+            <span class="badge badge-value">Best Value</span>
+            <h4 style="margin: 5px 0; color: #000000;">{best_value['Phone_Name']}</h4>
+            <p style="font-size: 13px; color: #000000; margin: 0;">คุ้มค่าที่สุดเมื่อเทียบสเปกกับราคา</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with v_col2:
+        st.markdown(f"""
+        <div class="verdict-card">
+            <span class="badge badge-camera">Camera King</span>
+            <h4 style="margin: 5px 0; color: #000000;">{best_camera['Phone_Name']}</h4>
+            <p style="font-size: 13px; color: #000000; margin: 0;">กล้องความละเอียดสูงถึง {best_camera['Camera_MP']} MP</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with v_col3:
+        st.markdown(f"""
+        <div class="verdict-card">
+            <span class="badge badge-battery">Battery Beast</span>
+            <h4 style="margin: 5px 0; color: #000000;">{best_battery['Phone_Name']}</h4>
+            <p style="font-size: 13px; color: #000000; margin: 0;">ความจุแบตเตอรี่สูงสุด {best_battery['Battery_mAh']:,} mAh</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Lifestyle Recommendations
+    st.subheader("Recommendations by Lifestyle")
+    persona = st.radio(
+        "Choose your primary usage:",
+        ["Mobile Gaming", "Content Creation", "Balanced Daily Driver"],
+        horizontal=True
+    )
+
+    if persona == "Mobile Gaming":
+        gaming_winner = filtered_df.sort_values(by=["RAM_GB", "Battery_mAh"], ascending=False).iloc[0]
+        st.success(f"**Recommended for Gaming:** **{gaming_winner['Phone_Name']}** (RAM {gaming_winner['RAM_GB']}GB + แบตเตอรี่ {gaming_winner['Battery_mAh']:,}mAh เล่นเกมปรับสุดได้ลื่นไหล)")
+    elif persona == "Content Creation":
+        cam_winner = filtered_df.sort_values(by=["Camera_MP", "Storage_GB"], ascending=False).iloc[0]
+        st.success(f"**Recommended for Creators:** **{cam_winner['Phone_Name']}** (กล้อง {cam_winner['Camera_MP']}MP + ความจุ {cam_winner['Storage_GB']}GB ถ่ายคลิปและภาพคมชัดจัดเต็ม)")
+    else:
+        daily_winner = filtered_df.sort_values(by="Score", ascending=False).iloc[0]
+        st.info(f"**Recommended for Daily Use:** **{daily_winner['Phone_Name']}** (คะแนนภาพรวม {daily_winner['Score']}/10 ครบเครื่องที่สุดสำหรับการใช้งานทั่วไป)")
+
+    st.markdown("---")
+
+    # Side-by-Side Table & Expander
+    st.subheader("Side-by-Side Spec Comparison")
+    display_df = filtered_df.drop(columns=["Image_URL"], errors="ignore")
+    transposed_df = display_df.set_index("Phone_Name").T
+    comparison_style = (
+        transposed_df.astype(str)
+        .style
+        .set_properties(**{"background-color": "#FFFFFF", "color": "#000000"})
+        .set_table_styles([
+            {"selector": "th", "props": [("background-color", "#FFFFFF"), ("color", "#000000")]}
+        ])
+    )
+    st.dataframe(comparison_style, use_container_width=True)
+
+    with st.expander("View Deep-Dive Technical Specifications"):
+        st.markdown("""
+                * **Display**  
+                    LTPO AMOLED / Super Retina XDR with 1-120Hz refresh rate
+                * **Charging**  
+                    Fast charging support from 45W to 80W with Qi2 wireless charging
+                * **Durability**  
+                    IP68 water and dust resistance with glass and titanium protection
+        """)
+
+    st.markdown("---")
+
+    # All-Round Spec Radar
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div style="background: linear-gradient(135deg, #16A34A, #15803D); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;">
+                <h2 style="color: #FFFFFF; margin: 0; font-size: 24px;">All-Round Spec Radar</h2>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.caption("เปรียบเทียบความสามารถโดยรวมของอุปกรณ์ที่เลือก ยิ่งพื้นที่มากยิ่งเด่นในสเปกนั้น")
+        categories = ['RAM_GB', 'Storage_GB', 'Battery_mAh', 'Camera_MP', 'Score']
+        radar_colors = ["#16A34A", "#2563EB", "#F59E0B", "#DC2626", "#7C3AED", "#0891B2"]
+        
+        normalized_df = filtered_df.copy()
+        for cat in categories:
+            max_val = df[cat].max() if df[cat].max() > 0 else 1
+            normalized_df[cat] = normalized_df[cat] / max_val
+
+        fig_radar = go.Figure()
+        for idx, row in normalized_df.iterrows():
+            fig_radar.add_trace(go.Scatterpolar(
+                r=[row[cat] for cat in categories],
+                theta=['RAM', 'Storage', 'Battery', 'Camera', 'Overall Score'],
+                fill='toself',
+                name=row['Phone_Name'],
+                line=dict(color=radar_colors[idx % len(radar_colors)], width=3),
+                fillcolor=radar_colors[idx % len(radar_colors)]
+            ))
+
+        fig_radar.update_layout(
+            template="plotly_white",
+            height=520,
+            paper_bgcolor='#FFFFFF',
+            plot_bgcolor='#F5FAF7',
+            polar=dict(
+                bgcolor='#F5FAF7',
+                radialaxis=dict(visible=True, range=[0, 1], showticklabels=False, linecolor='#86EFAC', gridcolor='#BBF7D0'),
+                angularaxis=dict(tickfont=dict(size=12, color='#000000'), linecolor='#86EFAC', gridcolor='#BBF7D0')
+            ),
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(color='#000000'))
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+
+    st.markdown("---")
+
+    # Price & Score Bar Charts
+    col1, col2 = st.columns(2)
+    chart_colors = ["#16A34A", "#2563EB", "#F59E0B", "#DC2626", "#7C3AED", "#0891B2"]
+
+    with col1:
+        st.subheader("Price Comparison")
+        fig_price = px.bar(
+            filtered_df,
+            x="Phone_Name",
+            y="Price_THB",
+            color="Phone_Name",
+            color_discrete_sequence=chart_colors,
+            text="Price_THB",
+            labels={"Phone_Name": "Model", "Price_THB": "Price (THB)"},
+        )
+        fig_price.update_traces(
+            texttemplate='%{text:,.0f}', 
+            textposition='outside',
+            textfont=dict(color="black", size=12, family="Arial")
+        )
+        fig_price.update_layout(
+            template="plotly_white", 
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color="black", size=12),
+            xaxis=dict(title_font=dict(color="black"), tickfont=dict(color="black")),
+            yaxis=dict(title_font=dict(color="black"), tickfont=dict(color="black"))
+        )
+        st.plotly_chart(fig_price, use_container_width=True)
+
+    with col2:
+        st.subheader("Rating Score")
+        fig_score = px.bar(
+            filtered_df,
+            x="Phone_Name",
+            y="Score",
+            color="Phone_Name",
+            color_discrete_sequence=chart_colors,
+            text="Score",
+            range_y=[0, 10],
+            labels={"Phone_Name": "Model", "Score": "Score"},
+        )
+        fig_score.update_traces(
+            texttemplate='%{text:.1f}', 
+            textposition='outside',
+            textfont=dict(color="black", size=12, family="Arial")
+        )
+        fig_score.update_layout(
+            template="plotly_white", 
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color="black", size=12),
+            xaxis=dict(title_font=dict(color="black"), tickfont=dict(color="black")),
+            yaxis=dict(title_font=dict(color="black"), tickfont=dict(color="black"))
+        )
+        st.plotly_chart(fig_score, use_container_width=True)
